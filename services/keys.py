@@ -23,11 +23,14 @@ class UserDataRepository:
         sql_query = """
             SELECT
                 sp.Url, sp.List_name, sp.Client_ID, sp.Client_Secret,
-                sv.Server_User, sv.Password, sv.Path_Share_Folder, sv.Server_IP
+                sv.Server_User, sv.Password, sv.Path_Share_Folder, sv.Server_IP, 
+                tk.Tokens
             FROM
                 Sharepoint AS sp
             INNER JOIN
                 Server AS sv ON sp.Mail = sv.Mail
+            INNER JOIN
+                Tokens AS tk ON sp.Mail = tk.Mail
             WHERE
                 sp.Mail = ?
         """
@@ -49,7 +52,9 @@ class UserDataRepository:
                         "Server_User": row.Server_User,
                         "Server_Password": row.Password,
                         "Path_Share_Folder": row.Path_Share_Folder,
-                        "Server_IP": row.Server_IP
+                        "Server_IP": row.Server_IP, 
+                        "Tokens" : row.Tokens, 
+                        "Email" : mail
                     }
                     return user_data
                 else:
@@ -60,4 +65,43 @@ class UserDataRepository:
         except pyodbc.Error as ex:
             sqlstate = ex.args[0]
             print(f"Error al consultar la base de datos (SQLSTATE: {sqlstate}): {ex}")
+            return None
+        
+    def tokens(self, email):
+        sql_query = f"SELECT Tokens From Tokens WHERE Mail = ?"
+        try:
+            with pyodbc.connect(self.connection_string) as cnxn:
+                cursor = cnxn.cursor()
+                cursor.execute(sql_query, email)
+                row = cursor.fetchone()
+
+                if row:
+                    return row[0]
+                return None
+        except pyodbc.Error as ex:
+            sqlstate = ex.args[0]
+            print(f"Error to get tokens (SQLSTATE: {sqlstate}): {ex}")
+            return None
+        
+    def update_tokens_in_db(self, mail, tokens_used):
+
+        tokens_in_db = self.tokens(mail)
+
+        if tokens_in_db != None and tokens_in_db > 0:
+            try:
+                with pyodbc.connect(self.connection_string) as cnxn:
+                    cursor = cnxn.cursor()
+                    total_tokens = tokens_in_db - tokens_used
+                    sql_query_update = f"""
+                    UPDATE Tokens
+                    SET Tokens = {total_tokens}
+                    WHERE Mail = ?
+                    """
+                    cursor.execute(sql_query_update, mail)
+                    return total_tokens
+            except pyodbc.Error as ex:
+                sqlstate = ex.args[0]
+                print(f"Error to update tokens (SQLSTATE: {sqlstate}): {ex}")
+                return None
+        else:
             return None

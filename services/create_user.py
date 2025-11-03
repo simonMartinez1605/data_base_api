@@ -64,6 +64,23 @@ class UsersFunctions():
             print(f"Error in SQL connection to create Server data: {sqlstate}")
             print(f"Full error message: {ex}") 
             return 403
+        
+    def apply_tokens(self, fields: User):
+        try:
+            cnxn = pyodbc.connect(self.sql_connection_str)
+            sql_query = "INSERT INTO Tokens (Mail, Tokens) VALUES (?, ?)"
+            params_tuple = (fields.Mail, 1000)
+
+            cursor = cnxn.cursor()
+            cursor.execute(sql_query, params_tuple)
+            cnxn.commit()
+            return 201
+        except pyodbc.Error as ex:
+            sqlstate = ex.args[0]
+            print(f"Error in SQL connection to create Server data: {sqlstate}")
+            print(f"Full error message: {ex}") 
+            return 403
+
 
     def validate_user(self, email):
         try:
