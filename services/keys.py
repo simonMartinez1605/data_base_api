@@ -59,12 +59,12 @@ class UserDataRepository:
                     return user_data
                 else:
                     # El usuario no fue encontrado en la base de datos
-                    print(f"No se encontraron datos para el usuario: {mail}")
+                    print(f"Don't found data for the user: {mail}")
                     return None
 
         except pyodbc.Error as ex:
             sqlstate = ex.args[0]
-            print(f"Error al consultar la base de datos (SQLSTATE: {sqlstate}): {ex}")
+            print(f"Error to search data (SQLSTATE: {sqlstate}): {ex}")
             return None
         
     def tokens(self, email):
@@ -94,10 +94,11 @@ class UserDataRepository:
                     total_tokens = tokens_in_db - tokens_used
                     sql_query_update = f"""
                     UPDATE Tokens
-                    SET Tokens = {total_tokens}
+                    SET Tokens = ?
                     WHERE Mail = ?
                     """
-                    cursor.execute(sql_query_update, mail)
+                    cursor.execute(sql_query_update, total_tokens, mail)
+                    cnxn.commit()
                     return total_tokens
             except pyodbc.Error as ex:
                 sqlstate = ex.args[0]
