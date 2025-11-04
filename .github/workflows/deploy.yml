@@ -1,0 +1,44 @@
+# .github/workflows/deploy.yml 
+name: Auto Deploy to VM
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up SSH
+      uses: webfactory/ssh-agent@v0.9.0
+      with:
+        ssh-private-key: ${{ secrets.SECRET }}
+
+    - name: Add VM host to known_hosts
+      run: |
+        mkdir -p ~/.ssh
+        ssh-keyscan -H ${{ secrets.HOST }} >> ~/.ssh/known_hosts
+
+    - name: Add GitHub to known_hosts on the VM
+      run: |
+        ssh azureuser@${{ secrets.HOST }} "
+          mkdir -p ~/.ssh && \
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+        "
+
+    - name: Deploy to VM via SSH
+      run: |
+        ssh azureuser@${{ secrets.HOST }} "
+          cd /home/azureuser/data_base_api && \
+          git checkout main && \
+          git reset --hard origin/main && \
+          git pull && \
+          /usr/bin/sudo systemctl restart data_base_qa.service && \
+          /usr/bin/sudo systemctl status data_base_qa.service && \
+          echo 'Deployment completed successfully!'
+        "
