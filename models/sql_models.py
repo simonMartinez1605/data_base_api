@@ -1,6 +1,6 @@
+import json
+from typing import List
 from pydantic import BaseModel
-from datetime import datetime 
-from typing import Optional, List
 
 class User(BaseModel):
     Mail : str
@@ -47,3 +47,11 @@ class SaveDocumentQueues(BaseModel):
     Folder_path : str
     Source_path : str
     Status : str
+
+class SaveExtractedData (BaseModel):
+    Document_id : int
+    Page_start : int
+    Page_end : int
+    Extracted_json : json
+    Is_approved : int
+    Email : str

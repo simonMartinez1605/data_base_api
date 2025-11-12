@@ -5,7 +5,7 @@ from services.get import GetValues
 from services.keys import UserDataRepository
 from services.creation import UsersFunctions
 from fastapi import FastAPI, HTTPException, exceptions
-from models.sql_models import User, CreateFolderRequest, CreateProfileRequest, SaveDocumentQueues
+from models.sql_models import User, CreateFolderRequest, CreateProfileRequest, SaveDocumentQueues, SaveExtractedData
 
 load_dotenv()
 
@@ -101,6 +101,21 @@ async def save_queues(request: SaveDocumentQueues):
         print(f"Error to create profile: {error}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
         
+@app.post('/save_extracted_data')
+async def save_data(request: SaveExtractedData):
+    try:
+        user_id = values.get_user_id(request.Email)
+        if not user_id:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        new_data = process.save_extracted_data(request, user_id)
+
+        if new_data:
+            return {"message":"New data save successfully", "Data_id": new_data}
+    except exceptions.FastAPIError as error:
+        print(f"Error to save the extracted data: {error}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
+
 
 @app.get("/validate_password")
 async def validate(email: str):    

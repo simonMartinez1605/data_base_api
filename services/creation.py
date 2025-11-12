@@ -2,7 +2,7 @@ import os
 import pyodbc
 from dotenv import load_dotenv
 from services.get import GetValues
-from models.sql_models import User, Folder, Profile, Anchor, SaveDocumentQueues
+from models.sql_models import User, Folder, Profile, Anchor, SaveDocumentQueues, SaveExtractedData
 
 load_dotenv()
 
@@ -161,12 +161,35 @@ class UsersFunctions():
 
                 queue_id = cursor.fetchone()[0]
                 cnxn.commit()
-                
+
                 return queue_id
         except pyodbc.Error as ex: 
             sqlstate = ex.args[0]
             print(f"Error in SQL connnection to save Queue (SQLSTATUS: {sqlstate}) Error: {ex}")
+            return None
+    
+    def save_extracted_data(self, DataToSave: SaveExtractedData, user_id):
+        sql_query = """
+            INSERT INTO ExtractedData (document_id, page_start, page_end, extracted_json, is_approved, qa_user_id, qa_timestamp)
+            OUTPUT INSERTED.data_id
+            VALUES (?, ?, ?, ?, ?, ?, GETDATE())
+        """
+
+        try:
+            with pyodbc.connect(self.sql_connection_str) as cnxn: 
+                data_params = (DataToSave.Document_id, DataToSave.Page_start, DataToSave.Page_end, DataToSave.Extracted_json, DataToSave.Is_approved, user_id)
                 
+                cursor = cnxn.cursor()
+                cursor.execute(sql_query, data_params)
+
+                data_id = cursor.fetchone()[0]
+                cnxn.commit()
+
+                return data_id
+        except pyodbc.Error as ex: 
+            sqlstate = ex.args[0]
+            print(f"Error in SQL connnection to save Data (SQLSTATUS: {sqlstate}) Error: {ex}")
+            return None
 
     def validate_user(self, email):
         try:
