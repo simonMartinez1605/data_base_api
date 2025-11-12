@@ -1,5 +1,4 @@
-import json
-from typing import List
+from typing import List, Dict, Any
 from pydantic import BaseModel
 
 class User(BaseModel):
@@ -18,7 +17,6 @@ class Profile(BaseModel):
     Separation : int
     Name : str
     Base_document : str
-    # Creation_date : datetime
 
 class Anchor(BaseModel):
     Anchor_name : str
@@ -52,6 +50,6 @@ class SaveExtractedData (BaseModel):
     Document_id : int
     Page_start : int
     Page_end : int
-    Extracted_json : json
+    Extracted_json : Dict
     Is_approved : int
     Email : str

@@ -1,4 +1,5 @@
 import os
+import json
 import pyodbc
 from dotenv import load_dotenv
 from services.get import GetValues
@@ -177,7 +178,8 @@ class UsersFunctions():
 
         try:
             with pyodbc.connect(self.sql_connection_str) as cnxn: 
-                data_params = (DataToSave.Document_id, DataToSave.Page_start, DataToSave.Page_end, DataToSave.Extracted_json, DataToSave.Is_approved, user_id)
+                json_string = json.dumps(DataToSave.Extracted_json)
+                data_params = (DataToSave.Document_id, DataToSave.Page_start, DataToSave.Page_end, json_string, DataToSave.Is_approved, user_id)
                 
                 cursor = cnxn.cursor()
                 cursor.execute(sql_query, data_params)

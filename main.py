@@ -85,18 +85,19 @@ async def save_queues(request: SaveDocumentQueues):
             raise HTTPException(status_code=404, detail="User not found")
         
         validate_folder = values.get_folder_id(request.Folder_path, user_id)
-        if validate_folder: 
-            raise HTTPException(status_code=409, detail=f"The user already create this Folder {request.Folder_path}")
+        if validate_folder == None: 
+            raise HTTPException(status_code=409, detail=f"The user does not have this folder: {request.Folder_path}")
         
         validate_profile = values.get_profile_id(request.Folder_path, user_id)
-        if validate_profile: 
-            raise HTTPException(status_code=409, detail=f"The user already create this profile {request.Folder_path}")
+        print(validate_profile)
+        if not validate_profile: 
+            raise HTTPException(status_code=409, detail=f"The user does not have profiles in this folder: {request.Folder_path}")
         
         new_queue = process.create_queue(user_id, validate_profile, validate_folder, request)
         if new_queue:
             return {"message":"Queue saved successfully", "Queue_id":new_queue}
         else:
-            raise HTTPException(status_code=500, detail="Failed to create Queue in database")
+            raise HTTPException(status_code=500, detail="Failed to save Queue in database")
     except exceptions.FastAPIError as error:
         print(f"Error to create profile: {error}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
@@ -112,6 +113,8 @@ async def save_data(request: SaveExtractedData):
 
         if new_data:
             return {"message":"New data save successfully", "Data_id": new_data}
+        else:
+            raise HTTPException(status_code=500, detail="Failed to save Data in database")
     except exceptions.FastAPIError as error:
         print(f"Error to save the extracted data: {error}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
