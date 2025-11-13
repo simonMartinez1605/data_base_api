@@ -2,6 +2,7 @@ import os
 import uvicorn
 from dotenv import load_dotenv
 from services.get import GetValues
+from services.update import UpdateData
 from services.creation import CreateData
 from services.keys import UserDataRepository
 from fastapi import FastAPI, HTTPException, exceptions
@@ -12,9 +13,10 @@ load_dotenv()
 connection_string = os.getenv('CONNECTION_STRING_SQL')
 
 app = FastAPI()
-process = CreateData()
-keys = UserDataRepository()
 values = GetValues()
+process = CreateData()
+updating = UpdateData()
+keys = UserDataRepository()
 
 #--------------------------------  Creations ------------------------------
 @app.post('/create_user')
@@ -52,7 +54,7 @@ async def create_folders(request: CreateFolderRequest):
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
 @app.post('/create_profile')
-async def create_profiles(request: CreateProfileRequest):
+async def create_anchor(request: CreateProfileRequest):
     try:
         user_id = values.get_user_id(request.Email)
         if not user_id:
@@ -78,7 +80,7 @@ async def create_profiles(request: CreateProfileRequest):
         print(f"Error to create profile: {error}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
     
-@app.post('/save_queue')
+@app.post('/create_queue')
 async def save_queues(request: SaveDocumentQueues):
     try:
         user_id = values.get_user_id(request.Email)
@@ -92,7 +94,7 @@ async def save_queues(request: SaveDocumentQueues):
         validate_profile = values.get_profile_id(request.Folder_path, user_id)
         print(validate_profile)
         if not validate_profile: 
-            raise HTTPException(status_code=409, detail=f"The user does not have profiles in this folder: {request.Folder_path}")
+            raise HTTPException(status_code=409, detail=f"The user does not have anchor in this folder: {request.Folder_path}")
         
         new_queue = process.create_queue(user_id, validate_profile, validate_folder, request)
         if new_queue:
@@ -141,26 +143,89 @@ async def save_errors(request: ErrorData):
         print(f"Error to save Errors: {error}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
-#--------------------------------  Get ------------------------------
+#-------------------------------- Get ------------------------------
 
-# @app.get('/folders')
-# async def get_folders(email):
-#     try:
-#         user_id = values.get_user_id(email)
+@app.get('/folders')
+async def get_folders(email):
+    try:
+        user_id = values.get_user_id(email)
 
-#         if not user_id:
-#             raise HTTPException(status_code=404, detail="User not found")
+        if not user_id:
+            raise HTTPException(status_code=404, detail="User not found")
         
-#         folders = values.get_folders(user_id)
-#         if not folders:
-#             raise HTTPException(status_code=404, detail="Folders not found")
-#         else:
-#             return folders
-#     except exceptions.FastAPIError as error:
-#         print(f"Error to save Errors: {error}")
-#         raise HTTPException(status_code=500, detail="Internal Server Error")
+        folders = values.get_folders(user_id)
+        if not folders:
+            raise HTTPException(status_code=404, detail="Folders not found")
+        else:
+            return folders
+    except exceptions.FastAPIError as error:
+        print(f"Error to save Errors: {error}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
+    
+@app.get('/queue_data')
+async def get_queue_data(email): 
+    try:
+        user_id = values.get_user_id(email)
 
+        if not user_id:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        data = values.get_queue_data(user_id)
+        if not data:
+            raise HTTPException(status_code=404, detail="Queue not found")
+        else:
+            return data
+    except exceptions.FastAPIError as error:
+        print(f"Error to get Queues: {error}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
+@app.get('/anchors')
+async def get_anchors(email, folder_path):
+    try:
+        user_id = values.get_user_id(email)
+
+        if not user_id:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        anchor = values.get_anchors(folder_path, user_id)
+
+        if not anchor:
+            raise HTTPException(status_code=404, detail="Anchor not found")
+        else:
+            return anchor
+    except exceptions.FastAPIError as error:
+        print(f"Error to get Anchor: {error}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
+
+@app.get('/fields')
+async def get_fields(anchor_id):
+    try:
+        fields = values.get_fields(anchor_id)
+        if not fields:
+            raise HTTPException(status_code=404, detail="Fields not found")
+        else:
+            return fields
+    except exceptions.FastAPIError as error:
+        print(f"Error to get Fields: {error}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
+
+@app.get('get_errors')
+async def get_errors(email):
+    try:
+        user_id = values.get_user_id(email)
+
+        if not user_id:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        errors = values.get_errors(user_id)
+
+        if not errors:
+            raise HTTPException(status_code=404, detail="Errors not found")
+        else:
+            return errors
+    except exceptions.FastAPIError as error:
+        print(f"Error to get Errors: {error}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 @app.get("/validate_password")
 async def validate(email: str):    
@@ -170,6 +235,27 @@ async def validate(email: str):
         print(f"Error to validate password: {error}")
         return 401
 
+
+# app.patch('/update_folder_status')
+# async def update_folder_status(email, folder_path, new_status):
+#     try:
+#         user_id = values.get_user_id(email)
+#         if not user_id:
+#             raise HTTPException(status_code=404, detail="User not found")
+        
+#         folder_id = values.get_folder_id(folder_path, user_id)
+#         if not folder_id:
+#             raise HTTPException(status_code=404, detail="Folder not found")
+
+#         update = updating.update_folder_status(folder_id, new_status)
+#         if not update:
+#             raise HTTPException(status_code=500, detail="Unable to update Folder Status")
+#         else:
+#             return update
+#     except exceptions.FastAPIError as error:
+#         print(f"Error to get Errors: {error}")
+#         raise HTTPException(status_code=500, detail="Internal Server Error")
+    
 
 if __name__ == "__main__":
     uvicorn.run(
