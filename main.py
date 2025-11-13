@@ -236,25 +236,25 @@ async def validate(email: str):
         return 401
 
 
-# app.patch('/update_folder_status')
-# async def update_folder_status(email, folder_path, new_status):
-#     try:
-#         user_id = values.get_user_id(email)
-#         if not user_id:
-#             raise HTTPException(status_code=404, detail="User not found")
+app.patch('/update_folder_status')
+async def update_folder_status(email, folder_path, new_status):
+    try:
+        user_id = values.get_user_id(email)
+        if not user_id:
+            raise HTTPException(status_code=404, detail="User not found")
         
-#         folder_id = values.get_folder_id(folder_path, user_id)
-#         if not folder_id:
-#             raise HTTPException(status_code=404, detail="Folder not found")
+        folder_id = values.get_folder_id(folder_path, user_id)
+        if not folder_id:
+            raise HTTPException(status_code=404, detail="Folder not found")
 
-#         update = updating.update_folder_status(folder_id, new_status)
-#         if not update:
-#             raise HTTPException(status_code=500, detail="Unable to update Folder Status")
-#         else:
-#             return update
-#     except exceptions.FastAPIError as error:
-#         print(f"Error to get Errors: {error}")
-#         raise HTTPException(status_code=500, detail="Internal Server Error")
+        update = updating.update_folder_status(folder_id, new_status)
+        if not update:
+            raise HTTPException(status_code=500, detail="Unable to update Folder Status")
+        else:
+            return update
+    except exceptions.FastAPIError as error:
+        print(f"Error to get Errors: {error}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
     
 
 if __name__ == "__main__":
