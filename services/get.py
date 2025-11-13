@@ -217,3 +217,43 @@ class GetValues:
             sqlstate = ex.args[0]
             print(f"Error to get fields (SQLSTATE: {sqlstate}): {ex}")
             return None
+
+    def get_errors(self, user_id):
+        sql_query = """
+            SELECT
+                err.error_id
+                f.path,
+                err.document_path, 
+                err.error_msg,
+                err.status, 
+                err.error_date
+            FROM Error AS err
+            JOIN Folders as f ON err.folder_id = f.folder_id
+            WHERE err.status = 'Pending' AND err.user_id ?
+        """
+
+        try:
+            with pyodbc.connect(self.connection_string) as cnxn:
+                cursor = cnxn.cursor()
+                cursor.execute(sql_query, user_id)
+                row = cursor.fetchall()
+                error_data = []
+                if row: 
+                    for i in range(len(row)):
+                        data = {
+                            "error_id": row[i].error_id,
+                            "folder_path" : row[i].path,
+                            "document_path" : row[i].document_path, 
+                            "error_msg" : row[i].error_msg, 
+                            "status" : row[i].status, 
+                            "error_date" : row[i].error_date 
+                        }
+                        error_data.append(data)
+                    return error_data
+                else:
+                    print("This user does not have errors... yet")
+                    return None
+        except pyodbc.Error as ex:
+            sqlstate = ex.args[0]
+            print(f"Error to get Errors (SQLSTATE: {sqlstate}): {ex}")
+            return None

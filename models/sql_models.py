@@ -53,3 +53,10 @@ class SaveExtractedData (BaseModel):
     Extracted_json : Dict
     Is_approved : int
     Email : str
+
+class ErrorData(BaseModel):
+    Email : str
+    Folder_path : str
+    Error_msg : str
+    Document_path : str
+    Status: str

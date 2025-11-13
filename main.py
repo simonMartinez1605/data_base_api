@@ -2,20 +2,21 @@ import os
 import uvicorn
 from dotenv import load_dotenv
 from services.get import GetValues
+from services.creation import CreateData
 from services.keys import UserDataRepository
-from services.creation import UsersFunctions
 from fastapi import FastAPI, HTTPException, exceptions
-from models.sql_models import User, CreateFolderRequest, CreateProfileRequest, SaveDocumentQueues, SaveExtractedData
+from models.sql_models import User, CreateFolderRequest, CreateProfileRequest, SaveDocumentQueues, SaveExtractedData, ErrorData
 
 load_dotenv()
 
 connection_string = os.getenv('CONNECTION_STRING_SQL')
 
 app = FastAPI()
-process = UsersFunctions()
+process = CreateData()
 keys = UserDataRepository()
 values = GetValues()
 
+#--------------------------------  Creations ------------------------------
 @app.post('/create_user')
 async def create_users(User: User):
     try:
@@ -118,6 +119,47 @@ async def save_data(request: SaveExtractedData):
     except exceptions.FastAPIError as error:
         print(f"Error to save the extracted data: {error}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
+
+@app.post('/save_error')
+async def save_errors(request: ErrorData):
+    try:
+        user_id = values.get_user_id(request.Email)
+        if not user_id:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        folder_id = values.get_folder_id(request.Folder_path, user_id)
+        if not folder_id:
+            raise HTTPException(status_code=404, detail="Folder not found")
+        
+        save_error = process.save_errors(request, user_id, folder_id)
+
+        if save_error:
+            return{"message":"New error saved successfully", "Error_id":save_error}
+        else:
+            raise HTTPException(status_code=500, detail="Failed to save Error")
+    except exceptions.FastAPIError as error:
+        print(f"Error to save Errors: {error}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
+
+#--------------------------------  Get ------------------------------
+
+# @app.get('/folders')
+# async def get_folders(email):
+#     try:
+#         user_id = values.get_user_id(email)
+
+#         if not user_id:
+#             raise HTTPException(status_code=404, detail="User not found")
+        
+#         folders = values.get_folders(user_id)
+#         if not folders:
+#             raise HTTPException(status_code=404, detail="Folders not found")
+#         else:
+#             return folders
+#     except exceptions.FastAPIError as error:
+#         print(f"Error to save Errors: {error}")
+#         raise HTTPException(status_code=500, detail="Internal Server Error")
+
 
 
 @app.get("/validate_password")

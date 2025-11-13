@@ -3,11 +3,11 @@ import json
 import pyodbc
 from dotenv import load_dotenv
 from services.get import GetValues
-from models.sql_models import User, Folder, Profile, Anchor, SaveDocumentQueues, SaveExtractedData
+from models.sql_models import User, Folder, Profile, Anchor, SaveDocumentQueues, SaveExtractedData, ErrorData
 
 load_dotenv()
 
-class UsersFunctions():
+class CreateData():
     def __init__(self):
         self.sql_connection_str = os.getenv('CONNECTION_STRING_SQL')
         self.get_values = GetValues()
@@ -192,6 +192,28 @@ class UsersFunctions():
             sqlstate = ex.args[0]
             print(f"Error in SQL connnection to save Data (SQLSTATUS: {sqlstate}) Error: {ex}")
             return None
+
+    def save_errors(self, ErrorData: ErrorData, user_id, folder_id):
+        sql_query = """
+            INSERT INTO Errors (folder_id, user_id, error_msg, document_path, status, error_date)
+            OUTPUT INSERTED.error_id
+            VALUES (?, ?, ?, ?, ?, GETDATE())
+        """
+        try:
+            with pyodbc.connect(self.sql_connection_str) as cnxn:
+                errors_params = (folder_id, user_id, ErrorData.Error_msg, ErrorData.Document_path, ErrorData.Status)
+
+                cursor = cnxn.cursor()
+                cursor.execute(sql_query, errors_params)
+
+                error_id = cursor.fetchone()[0]
+                cnxn.commit()
+
+                return error_id
+        except pyodbc.Error as ex:
+            sqlstate = ex.args[0]
+            print(f"Error to save Errros data (SQLSTATE: {sqlstate}): {ex}")
+            return None 
 
     def validate_user(self, email):
         try:
