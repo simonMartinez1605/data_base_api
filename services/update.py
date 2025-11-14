@@ -31,3 +31,27 @@ class UpdateData:
             sqlstate =ex.args[0]
             print(f"Error to update folder status (SQLSTATE: {sqlstate}): {ex}")
             return None
+        
+    def update_error_status(self, error_id, status):
+        sql_query = """
+            UPDATE Errors
+            SET status = ?
+            OUTPUT INSERTED.status
+            WHERE error_id = ?
+        """
+
+        try:
+            with pyodbc.connect(self.sql_connection_str) as cnxn: 
+                query_params = (status, error_id)
+
+                cursor = cnxn.cursor()
+                cursor.execute(sql_query, query_params)
+
+                new_status = cursor.fetchone()[0]
+                cnxn.commit()
+
+                return new_status
+        except pyodbc.Error as ex:
+            sqlstate = ex.args[0]
+            print(f"Error to update error status (SQLSTATE: {sqlstate}) {ex}")
+            return None

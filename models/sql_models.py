@@ -59,4 +59,12 @@ class ErrorData(BaseModel):
     Folder_path : str
     Error_msg : str
     Document_path : str
-    Status: str
+
+class UpdateFolderStatus(BaseModel):
+    Email : str
+    Folder_path : str
+    New_status : str
+
+class UpdateErrorStatus(BaseModel):
+    Error_id : int
+    New_status : str

@@ -36,22 +36,30 @@ class GetValues:
             SELECT 
                 f.path, 
                 f.status
-            FROM Folders AS f, Users AS u
-            WHERE u.user_id = ? 
+            FROM Folders AS f
+            WHERE f.user_id = ?
         """
+
+        folders_data = []
 
         try:
             with pyodbc.connect(self.connection_string) as cnxn:
                 cursor = cnxn.cursor()
                 cursor.execute(sql_query, user_id)
-                row = cursor.fetchall()
-                if row:
-                    data_dict = dict(row)
-                    json_string = json.dumps(data_dict, indent=4)
-                    return json_string
+                rows = cursor.fetchall()
+
+                if rows:
+                    for row in rows:
+                        data = {
+                            "Path" : row.path, 
+                            "Status" : row.status
+                        }
+                        folders_data.append(data)
+                    return folders_data
                 else:
                     print(f"Any Folder associate with this user")
                     return None
+                
         except pyodbc.Error as ex:
             sqlstate = ex.args[0]
             print(f"Error to get folders (SQLSTATE: {sqlstate}): {ex}")
@@ -74,7 +82,7 @@ class GetValues:
                 if row:
                     return row.folder_id
                 else:
-                    print(f"This folder does not exists: {folder_path}")
+                    print(f"This folder does not exists or the user does not have the acces to this folder: {folder_path}")
                     return None
         except pyodbc.Error as ex:
             sqlstate = ex.args[0]
@@ -95,19 +103,28 @@ class GetValues:
             WHERE 
                 d.status = 'Pending' AND e.qa_user_id = ?
         """
+        queue_data = []
         try:
             with pyodbc.connect(self.connection_string) as cnxn:
                 cursor = cnxn.cursor()
                 cursor.execute(sql_query, user_id)
-                row = cursor.fetchall()
-                queue_data = []
-                if row:
-                    for i in range(len(row)):
+                rows = cursor.fetchall()
+                if rows:
+                    for row in rows:
+                        parsed_json = None
+
+                        if row.extracted_json:
+                            try:
+                                parsed_json = json.loads(row.extracted_json)
+                            except json.JSONDecodeError:
+                                print(f"Warning: JSON Format invalid for data id {row.data_id}")
+                        
                         data = {
-                            "path" : row[i].source_path, 
-                            "json": row[i].extracted_json, 
-                            "page_start" :row[i].page_start, 
-                            "page_end" : row[i].page_end 
+                            "path" : row.source_path,
+                            "data_id": row.data_id,
+                            "json": parsed_json,
+                            "page_start" : row.page_start,
+                            "page_end" : row.page_end
                         }
                         queue_data.append(data)
                     return queue_data
@@ -141,7 +158,7 @@ class GetValues:
             print(f"Error to get profile id (SQLSTATE: {sqlstate}): {ex}")
             return None
         
-    def get_anchors(self, folder_path, user_id):
+    def get_anchors(self, profile_id):
         sql_query = """
             SELECT
                 a.anchor_name, 
@@ -153,23 +170,23 @@ class GetValues:
             FROM Anchors AS a
             WHERE a.profile_id = ?
         """
-
-        profile_id = self.get_profile_id(folder_path, user_id)
+        anchor_data = []
 
         try:
             with pyodbc.connect(self.connection_string) as cnxn:
                 cursor = cnxn.cursor()
                 cursor.execute(sql_query, profile_id)
-                row = cursor.fetchall()
-                anchor_data = []
-                if row:
-                    for i in range(len(row)):
+                rows = cursor.fetchall()
+
+                if rows:
+                    for row in rows:
                         data = {
-                            "anchor_name": row[i].anchor_name, 
-                            "coord_x" : row[i].coord_x, 
-                            "coord_y" : row[i].coord_y, 
-                            "coord_w"  : row[i].coord_w, 
-                            "coord_h" : row[i].coord_h
+                            "anchor_name": row.anchor_name, 
+                            "anchor_id" : row.anchor_id,
+                            "coord_x" : row.coord_x, 
+                            "coord_y" : row.coord_y, 
+                            "coord_w"  : row.coord_w, 
+                            "coord_h" : row.coord_h
                         }
                         anchor_data.append(data)
                     return anchor_data
@@ -193,20 +210,20 @@ class GetValues:
             WHERE fe.anchor_id = ?
         """
 
+        fields_data = []
         try:
             with pyodbc.connect(self.connection_string) as cnxn:
                 cursor = cnxn.cursor()
                 cursor.execute(sql_query, anchor_id)
-                row = cursor.fetchall()
-                fields_data = []
-                if row:
-                    for i in range(len(row)):
+                rows = cursor.fetchall()
+                if rows:
+                    for row in rows:
                         data = {
-                            "field_name" : row[i].field_name, 
-                            "coord_x" : row[i].coord_x, 
-                            "coord_y" : row[i].coord_y, 
-                            "coord_w"  : row[i].coord_w, 
-                            "coord_h" : row[i].coord_h
+                            "field_name" : row.field_name, 
+                            "coord_x" : row.coord_x, 
+                            "coord_y" : row.coord_y, 
+                            "coord_w"  : row.coord_w, 
+                            "coord_h" : row.coord_h
                         }
                         fields_data.append(data)
                     return fields_data
@@ -218,37 +235,80 @@ class GetValues:
             print(f"Error to get fields (SQLSTATE: {sqlstate}): {ex}")
             return None
 
+    def get_profiles(self, user_id):
+        profile_sql_query = """
+            SELECT
+                p.profile_id, 
+                p.separation, 
+                p.name, 
+                p.base_document, 
+                p.creation_date
+            FROM Profiles AS p
+            WHERE user_id = ?
+        """
+
+        profile_data = []
+
+        try:
+            with pyodbc.connect(self.connection_string) as cnxn:
+                cursor = cnxn.cursor()
+                cursor.execute(profile_sql_query, user_id)
+
+                profile_rows = cursor.fetchall()
+
+                if profile_rows:
+                    for row in profile_rows:
+                        anchors = self.get_anchors(row.profile_id)
+                        anchor_id = anchors[0]['anchor_id']
+                        fields = self.get_fields(anchor_id)
+                        data = {
+                            "profile_id" : row.profile_id,
+                            "name" : row.name, 
+                            "separation" : row.separation, 
+                            "base_document" : row.base_document, 
+                            "creation_date" : row.creation_date, 
+                            "anchors" : anchors, 
+                            "fields" : fields
+                        }
+                        profile_data.append(data)
+                    return profile_data
+        except pyodbc.Error as ex:
+            sqlstate = ex.args[0]
+            print(f"Error to get Profiles (SQLSTATE: {sqlstate}) {ex}")
+            return None
+
     def get_errors(self, user_id):
         sql_query = """
             SELECT
-                err.error_id
+                err.error_id,
                 f.path,
                 err.document_path, 
                 err.error_msg,
                 err.status, 
                 err.error_date
-            FROM Error AS err
+            FROM Errors AS err
             JOIN Folders as f ON err.folder_id = f.folder_id
-            WHERE err.status = 'Pending' AND err.user_id ?
+            WHERE err.status = 'Pending' AND err.user_id = ?
         """
 
+        error_data = []
         try:
             with pyodbc.connect(self.connection_string) as cnxn:
                 cursor = cnxn.cursor()
                 cursor.execute(sql_query, user_id)
-                row = cursor.fetchall()
-                error_data = []
-                if row: 
-                    for i in range(len(row)):
+                rows = cursor.fetchall()
+                if rows: 
+                    for row in rows:
                         data = {
-                            "error_id": row[i].error_id,
-                            "folder_path" : row[i].path,
-                            "document_path" : row[i].document_path, 
-                            "error_msg" : row[i].error_msg, 
-                            "status" : row[i].status, 
-                            "error_date" : row[i].error_date 
+                            "error_id": row.error_id,
+                            "folder_path" : row.path,
+                            "document_path" : row.document_path, 
+                            "error_msg" : row.error_msg, 
+                            "status" : row.status, 
+                            "error_date" : row.error_date 
                         }
                         error_data.append(data)
+                        print(data)
                     return error_data
                 else:
                     print("This user does not have errors... yet")

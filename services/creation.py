@@ -201,7 +201,7 @@ class CreateData():
         """
         try:
             with pyodbc.connect(self.sql_connection_str) as cnxn:
-                errors_params = (folder_id, user_id, ErrorData.Error_msg, ErrorData.Document_path, ErrorData.Status)
+                errors_params = (folder_id, user_id, ErrorData.Error_msg, ErrorData.Document_path, 'Pending')
 
                 cursor = cnxn.cursor()
                 cursor.execute(sql_query, errors_params)

@@ -6,7 +6,7 @@ from services.update import UpdateData
 from services.creation import CreateData
 from services.keys import UserDataRepository
 from fastapi import FastAPI, HTTPException, exceptions
-from models.sql_models import User, CreateFolderRequest, CreateProfileRequest, SaveDocumentQueues, SaveExtractedData, ErrorData
+from models.sql_models import User, CreateFolderRequest, CreateProfileRequest, SaveDocumentQueues, SaveExtractedData, ErrorData, UpdateFolderStatus, UpdateErrorStatus
 
 load_dotenv()
 
@@ -18,7 +18,7 @@ process = CreateData()
 updating = UpdateData()
 keys = UserDataRepository()
 
-#--------------------------------  Creations ------------------------------
+#--------------------------------  Create ------------------------------
 @app.post('/create_user')
 async def create_users(User: User):
     try:
@@ -161,7 +161,23 @@ async def get_folders(email):
     except exceptions.FastAPIError as error:
         print(f"Error to save Errors: {error}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
-    
+
+@app.get('/profiles')
+async def get_profile(email):
+    try:
+        user_id = values.get_user_id(email)
+        if not user_id:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        profile = values.get_profiles(user_id)
+        if not profile:
+            raise HTTPException(status_code=404, detail="Profiles no found")
+        else:
+            return profile
+    except exceptions.FastAPIError as error:
+        print(f"Error to get Queues: {error}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
+
 @app.get('/queue_data')
 async def get_queue_data(email): 
     try:
@@ -187,7 +203,12 @@ async def get_anchors(email, folder_path):
         if not user_id:
             raise HTTPException(status_code=404, detail="User not found")
         
-        anchor = values.get_anchors(folder_path, user_id)
+        profile_id = values.get_profile_id(folder_path, user_id)
+
+        if not profile_id:
+            raise HTTPException(status_code=404, detail="Profile Not found")
+        
+        anchor = values.get_anchors(profile_id)
 
         if not anchor:
             raise HTTPException(status_code=404, detail="Anchor not found")
@@ -209,7 +230,7 @@ async def get_fields(anchor_id):
         print(f"Error to get Fields: {error}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
-@app.get('get_errors')
+@app.get('/get_errors')
 async def get_errors(email):
     try:
         user_id = values.get_user_id(email)
@@ -235,27 +256,39 @@ async def validate(email: str):
         print(f"Error to validate password: {error}")
         return 401
 
+#-------------------------------- Update ------------------------------
 
-app.patch('/update_folder_status')
-async def update_folder_status(email, folder_path, new_status):
+@app.patch('/update_folder_status')
+async def update_folder_status(request: UpdateFolderStatus):
     try:
-        user_id = values.get_user_id(email)
+        user_id = values.get_user_id(request.Email)
         if not user_id:
             raise HTTPException(status_code=404, detail="User not found")
         
-        folder_id = values.get_folder_id(folder_path, user_id)
+        folder_id = values.get_folder_id(request.Folder_path, user_id)
         if not folder_id:
-            raise HTTPException(status_code=404, detail="Folder not found")
+            raise HTTPException(status_code=404, detail="Folder not found or the user does not have the acces to this folder")
 
-        update = updating.update_folder_status(folder_id, new_status)
+        update = updating.update_folder_status(folder_id, request.New_status)
         if not update:
-            raise HTTPException(status_code=500, detail="Unable to update Folder Status")
+            raise HTTPException(status_code=500, detail="Unable to update Folder status")
         else:
             return update
     except exceptions.FastAPIError as error:
         print(f"Error to get Errors: {error}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
-    
+
+@app.patch('/update_error_status')
+async def update_error_status(request: UpdateErrorStatus):
+    try:
+        update = updating.update_error_status(request.Error_id, request.New_status)
+        if not update:
+            raise HTTPException(status_code=500, detail="Unable to update Errors status")
+        return update
+    except exceptions.FastAPIError as error:
+        print(f"Error to get Errors: {error}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
+
 
 if __name__ == "__main__":
     uvicorn.run(
