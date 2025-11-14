@@ -308,7 +308,6 @@ class GetValues:
                             "error_date" : row.error_date 
                         }
                         error_data.append(data)
-                        print(data)
                     return error_data
                 else:
                     print("This user does not have errors... yet")

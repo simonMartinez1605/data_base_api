@@ -216,10 +216,13 @@ class CreateData():
             return None 
 
     def validate_user(self, email):
+        sql_query = """
+            SELECT email From Users Where email = ?
+        """
         try:
             with pyodbc.connect(self.sql_connection_str) as cnxn:
                 cursor = cnxn.cursor()
-                cursor.execute("SELECT email From Users Where email = ?", email)
+                cursor.execute(sql_query, email)
                 row = cursor.fetchone()[0]
                 if row == None:
                     return None
